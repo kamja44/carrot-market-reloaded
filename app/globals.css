@@ -3,10 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 모든 a태그는 파란색이다. */
 @layer base {
   a {
-    @apply text-blue-500;
+    @apply text-orange-500;
   }
 }
 
@@ -16,14 +15,8 @@
   }
 }
 
-/* 글로벌로 적용된다. */
-.btn {
-  @apply w-full bg-black h-10 text-white rounded-kamja mt-tomato;
-}
-
-/* 새로운 tailwind css style 이름으로 btn이 생성된다. */
 @layer components {
   .btn {
-    @apply w-full bg-black h-10 text-white rounded-kamja mt-tomato;
+    @apply w-full bg-black h-10 text-white rounded-sexy-name mt-tomato;
   }
 }
