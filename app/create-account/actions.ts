@@ -1,12 +1,33 @@
 "use server";
 import { z } from "zod";
 
-const formSchema = z.object({
-  username: z.string().min(3).max(10),
-  email: z.string().email(),
-  password: z.string().min(10),
-  confirmPassword: z.string().min(10),
-});
+const checkUsername = (username: string) => !username.includes("potato");
+const checkPasswords = ({
+  password,
+  confirmPassword,
+}: {
+  password: string;
+  confirmPassword: string;
+}) => password === confirmPassword;
+
+const formSchema = z
+  .object({
+    username: z
+      .string({
+        invalid_type_error: "이름은 문자로 작성되어야 합니다.",
+        required_error: "이름은 필수로 입력해야 합니다.",
+      })
+      .min(3, "이름이 너무 짧아요 !")
+      .max(10, "이름이 너무 길어요 !")
+      .refine(checkUsername, "No potatoes allowed"),
+    email: z.string().email(),
+    password: z.string().min(10),
+    confirmPassword: z.string().min(10),
+  })
+  .refine(checkPasswords, {
+    message: "Both passwords should be the same",
+    path: ["confirmPassword"],
+  });
 
 export async function createAccount(prevState: any, formData: FormData) {
   const data = {
@@ -18,6 +39,7 @@ export async function createAccount(prevState: any, formData: FormData) {
   // formSchema.parse(data); 에러 반환
   const result = formSchema.safeParse(data); // 에러 반환 x
   if (!result.success) {
+    console.log(result.error.flatten());
     return result.error.flatten();
   }
 }
