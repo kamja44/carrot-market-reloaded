@@ -5,9 +5,10 @@ import SocalLogin from "@/components/social-login";
 export default function LogIn() {
   const handleForm = async (formData: FormData) => {
     "use server";
-    console.log(formData.get("email"), formData.get("password"));
-    console.log("i run in the server only!!");
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    console.log("logged in!");
   };
+
   return (
     <div className="flex flex-col gap-10 py-8 px-6">
       <div className="flex flex-col gap-2 *:font-medium">
@@ -29,7 +30,7 @@ export default function LogIn() {
           required
           errors={[""]}
         />
-        <FormButton loading={false} text="Log in" />
+        <FormButton text="Log in" />
       </form>
       <SocalLogin />
     </div>
