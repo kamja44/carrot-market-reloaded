@@ -1,3 +1,5 @@
+import { accessToken } from "@/lib/auth/accessToken";
+import { getUserEmail, getUserProfile } from "@/lib/auth/github";
 import db from "@/lib/db";
 import userLogin from "@/lib/userLogin";
 import { NextRequest } from "next/server";
@@ -9,31 +11,13 @@ export async function GET(request: NextRequest) {
       status: 400,
     });
   }
-  const accessTokenParams = new URLSearchParams({
-    client_id: process.env.GITHUB_CLIENT_ID!,
-    client_secret: process.env.GITHUB_CLIENT_SECRET!,
-    code,
-  }).toString();
-  const accessTokenURL = `https://github.com/login/oauth/access_token?${accessTokenParams}`;
-  const accessTokenResponse = await fetch(accessTokenURL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-    },
-  });
-  const { error, access_token } = await accessTokenResponse.json();
+  const { error, access_token } = await accessToken(code);
   if (error) {
     return new Response(null, {
       status: 400,
     });
   }
-  const userProfileResponse = await fetch("https://api.github.com/user", {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-    cache: "no-cache",
-  });
-  const { id, avatar_url, login } = await userProfileResponse.json();
+  const { id, avatar_url, login } = await getUserProfile(access_token);
   const user = await db.user.findUnique({
     where: {
       github_id: id + "",
@@ -42,6 +26,7 @@ export async function GET(request: NextRequest) {
       id: true,
     },
   });
+
   if (user) {
     await userLogin(user);
   }
@@ -55,11 +40,24 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  const { email, primary, verified, visibility } = await getUserEmail(
+    access_token
+  );
+  const existsUserEmail = await db.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+    },
+  });
+
   const newuser = await db.user.create({
     data: {
       username: existsUsername ? `${login}-gh` : login,
       github_id: id + "",
       avatar: avatar_url,
+      email: existsUserEmail ? null : email,
     },
     select: {
       id: true,
