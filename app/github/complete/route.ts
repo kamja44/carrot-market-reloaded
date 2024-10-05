@@ -1,10 +1,13 @@
-import { notFound } from "next/navigation";
+import db from "@/lib/db";
+import userLogin from "@/lib/userLogin";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
-    return notFound();
+    return new Response(null, {
+      status: 400,
+    });
   }
   const accessTokenParams = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID!,
@@ -18,11 +21,49 @@ export async function GET(request: NextRequest) {
       Accept: "application/json",
     },
   });
-  const accessTokenData = await accessTokenResponse.json();
-  if ("error" in accessTokenData) {
+  const { error, access_token } = await accessTokenResponse.json();
+  if (error) {
     return new Response(null, {
       status: 400,
     });
   }
-  return Response.json({ accessTokenData });
+  const userProfileResponse = await fetch("https://api.github.com/user", {
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+    },
+    cache: "no-cache",
+  });
+  const { id, avatar_url, login } = await userProfileResponse.json();
+  const user = await db.user.findUnique({
+    where: {
+      github_id: id + "",
+    },
+    select: {
+      id: true,
+    },
+  });
+  if (user) {
+    await userLogin(user);
+  }
+
+  const existsUsername = await db.user.findUnique({
+    where: {
+      username: login,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const newuser = await db.user.create({
+    data: {
+      username: existsUsername ? `${login}-gh` : login,
+      github_id: id + "",
+      avatar: avatar_url,
+    },
+    select: {
+      id: true,
+    },
+  });
+  await userLogin(newuser);
 }
