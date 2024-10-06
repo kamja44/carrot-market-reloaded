@@ -1,4 +1,6 @@
 "use server";
+
+import twilio from "twilio";
 import crypto from "crypto";
 import { z } from "zod";
 import validator from "validator";
@@ -66,7 +68,6 @@ export async function smsVerification(
         error: result.error.flatten(),
       };
     } else {
-      // delete previous token
       await db.sMSToken.deleteMany({
         where: {
           user: {
@@ -74,7 +75,6 @@ export async function smsVerification(
           },
         },
       });
-      // create token
       const token = await getToken();
       await db.sMSToken.create({
         data: {
@@ -92,7 +92,15 @@ export async function smsVerification(
           },
         },
       });
-      // send the token using twilio
+      const client = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+      await client.messages.create({
+        body: `Your Karrot verification code is :${token}`,
+        from: process.env.TWILIO_PHONE_NUMBER!,
+        to: process.env.MY_PHONE_NUMBER!,
+      });
       return {
         token: true,
       };
