@@ -4,6 +4,7 @@ import { z } from "zod";
 import validator from "validator";
 import { redirect } from "next/navigation";
 import db from "@/lib/db";
+import userLogin from "@/lib/userLogin";
 const phoneSchema = z
   .string()
   .trim()
@@ -11,9 +12,23 @@ const phoneSchema = z
     (phone) => validator.isMobilePhone(phone, "ko-KR"),
     "Wrong phone Format"
   );
-
+async function tokenExists(token: number) {
+  const exists = await db.sMSToken.findUnique({
+    where: {
+      token: token.toString(),
+    },
+    select: {
+      id: true,
+    },
+  });
+  return Boolean(exists);
+}
 // coerce => user가 입력한 string을 number로 변환한다.
-const tokenSchema = z.coerce.number().min(100000).max(999999);
+const tokenSchema = z.coerce
+  .number()
+  .min(100000)
+  .max(999999)
+  .refine(tokenExists, "This token does not exists");
 
 interface ActionState {
   token: boolean;
@@ -83,14 +98,30 @@ export async function smsVerification(
       };
     }
   } else {
-    const result = tokenSchema.safeParse(token);
+    const result = await tokenSchema.safeParseAsync(token);
     if (!result.success) {
       return {
         token: true,
         error: result.error.flatten(),
       };
     } else {
-      redirect("/");
+      const token = await db.sMSToken.findUnique({
+        where: {
+          token: result.data.toString(),
+        },
+        select: {
+          id: true,
+          userId: true,
+        },
+      });
+      await userLogin(token);
+      await db.sMSToken.delete({
+        where: {
+          id: token!.id,
+        },
+      });
+
+      redirect("/profile");
     }
   }
 }
