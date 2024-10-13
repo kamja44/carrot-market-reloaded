@@ -39,4 +39,4 @@ next-env.d.ts
 *.db
 *.db-journal
 
-/public/kamja.png
+/public
