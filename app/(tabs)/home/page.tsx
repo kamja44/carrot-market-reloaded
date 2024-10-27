@@ -31,7 +31,6 @@ export default async function Products() {
   const initialProduct = await getInitialProducts();
   return (
     <div>
-      <Link href="/home/recent">recent</Link>
       <ProductList initialProducts={initialProduct} />
       <Link
         href="/products/add"
